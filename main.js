@@ -1,6 +1,6 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
-const si = require('systeminformation');
+const osu = require('node-os-utils');
 
 function createWindow() {
     const win = new BrowserWindow({
@@ -17,71 +17,69 @@ function createWindow() {
 
     win.loadFile('index.html');
     
-    // DevTools für die Fehlersuche aktivieren
-    win.webContents.openDevTools();
+    //win.webContents.openDevTools();
 }
 
 app.whenReady().then(() => {
     createWindow();
 
     ipcMain.handle('get-system-info', async () => {
+        const cpu = osu.cpu;
+        const mem = osu.mem;
+        const os = osu.os;
+
+        const systemInfo = {
+            cpu: {},
+            gpu: { name: 'N/A', load: 'N/A' }, // node-os-utils hat keine GPU-Infos
+            mem: {},
+            os: 'N/A',
+            ip: 'N/A',
+            hostname: 'N/A',
+            processes: []
+        };
+
         try {
-            const cpuLoad = await si.currentLoad();
-            const cpuInfo = await si.cpu();
-            const mem = await si.mem();
-            const processes = await si.processes();
-            const os = await si.osInfo();
-            const system = await si.system();
-            const network = await si.networkInterfaces();
-            
-            let gpuController = { model: 'N/A', utilizationGpu: 'N/A', memoryTotal: 'N/A', memoryUsed: 'N/A' };
-            try {
-                const gpuInfo = await si.graphics();
-                if (gpuInfo.controllers.length > 0) {
-                    gpuController = gpuInfo.controllers[0];
-                }
-            } catch (e) {
-                console.error('Fehler beim Abrufen der GPU-Informationen:', e);
-            }
-
-            const filteredProcesses = processes.list
-                .filter(p => p.cpu > 0 || p.mem > 0)
-                .sort((a, b) => b.cpu - a.cpu)
-                .slice(0, 10);
-            
-            const activeNetwork = network.find(iface => iface.ip4 && !iface.internal);
-            
-            return {
-                cpu: {
-                    load: cpuLoad.currentLoad.toFixed(1),
-                    name: cpuInfo.brand,
-                    cores: cpuInfo.cores,
-                    speed: `${cpuInfo.speed.toFixed(2)} GHz`
-                },
-                gpu: {
-                    name: gpuController.model,
-                    load: gpuController.utilizationGpu !== 'N/A' ? gpuController.utilizationGpu.toFixed(1) : 'N/A',
-                    memTotal: gpuController.memoryTotal !== 'N/A' ? (gpuController.memoryTotal / 1024).toFixed(1) : 'N/A',
-                    memUsed: gpuController.memoryUsed !== 'N/A' ? (gpuController.memoryUsed / 1024).toFixed(1) : 'N/A'
-                },
-                mem: {
-                    used: (mem.used / 1024 / 1024 / 1024).toFixed(2),
-                    total: (mem.total / 1024 / 1024 / 1024).toFixed(2)
-                },
-                os: `${os.distro} (${os.release})`,
-                ip: activeNetwork ? activeNetwork.ip4 : 'N/A',
-                hostname: system.model,
-                processes: filteredProcesses.map(p => ({
-                    name: p.name,
-                    cpu: p.cpu.toFixed(1),
-                    mem: (p.mem / 1024 / 1024).toFixed(1)
-                }))
-            };
-
+            const cpuLoad = await cpu.usage();
+            systemInfo.cpu.load = cpuLoad.toFixed(1);
         } catch (e) {
-            console.error('Fehler im Hauptprozess beim Abrufen der Systeminfos:', e);
-            return null;
+            console.error('Fehler beim Abrufen der CPU-Last:', e.message);
         }
+
+        try {
+            const memInfo = await mem.info();
+            systemInfo.mem.used = (memInfo.usedMemMb / 1024).toFixed(2);
+            systemInfo.mem.total = (memInfo.totalMemMb / 1024).toFixed(2);
+        } catch (e) {
+            console.error('Fehler beim Abrufen der RAM-Infos:', e.message);
+        }
+
+        try {
+            const osInfo = await os.info();
+            systemInfo.os = osInfo.distro;
+            systemInfo.hostname = osInfo.hostname;
+        } catch (e) {
+            console.error('Fehler beim Abrufen der OS-Infos:', e.message);
+        }
+
+        try {
+            const processes = await osu.proc.topCpu(10);
+            systemInfo.processes = processes.map(p => ({
+                name: p.command,
+                cpu: p.cpu.toFixed(1),
+                mem: (p.mem / 1024).toFixed(1)
+            }));
+        } catch (e) {
+            console.error('Fehler beim Abrufen der Prozesse:', e.message);
+        }
+
+        try {
+            const network = await os.ip();
+            systemInfo.ip = network;
+        } catch (e) {
+            console.error('Fehler beim Abrufen der IP-Adresse:', e.message);
+        }
+
+        return systemInfo;
     });
 
     app.on('activate', () => {
