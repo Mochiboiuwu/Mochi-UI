@@ -112,7 +112,6 @@ function bootSequence(index = 0) {
     if (index < bootText.length) {
         loaderText.textContent += "\n" + bootText[index];
         loaderText.scrollTop = loaderText.scrollHeight;
-        // Die Verzögerung auf 30ms angepasst für bessere Lesbarkeit
         setTimeout(() => bootSequence(index + 1), 30); 
     } else {
         setTimeout(() => {
@@ -133,10 +132,52 @@ function updateSystemInfo() {
     osInfo.innerText = "MochiOS (1.0)";
 }
 
+// Funktion, die den Glitch-Effekt zufällig auslöst
+function startGlitchEffect() {
+    // Wahrscheinlichkeit für einen globalen Glitch (5%)
+    const globalGlitchChance = 70.5; 
+    const isGlobalGlitch = Math.random() < globalGlitchChance;
+
+    // Zeit, bis der nächste Glitch beginnt (zwischen 5 und 20 Sekunden)
+    const glitchDelay = Math.random() * 15000 + 5000;
+    
+    setTimeout(() => {
+        if (isGlobalGlitch) {
+            // Führe den globalen Glitch auf den Haupt-Container aus
+            mainUI.classList.add('glitch-all');
+
+            // Entferne die Klassen nach einer kurzen, intensiven Zeit (0.5 Sekunden)
+            setTimeout(() => {
+                mainUI.classList.remove('glitch-all');
+                // Starte den Glitch-Effekt erneut
+                startGlitchEffect();
+            }, 500);
+
+        } else {
+            // Führe den kleinen Glitch auf die inneren Elemente aus
+            const glitchTargets = document.querySelectorAll('.header, .terminal-screen, .input-line');
+            const targetElement = glitchTargets[Math.floor(Math.random() * glitchTargets.length)];
+            
+            const textContent = targetElement.textContent;
+            targetElement.classList.add('glitch');
+            targetElement.setAttribute('data-glitch-text', textContent);
+
+            // Entferne die Klasse nach einer kurzen Zeit (1 Sekunde)
+            setTimeout(() => {
+                targetElement.classList.remove('glitch');
+                // Starte den Glitch-Effekt erneut
+                startGlitchEffect();
+            }, 1000);
+        }
+    }, glitchDelay);
+}
+
+
 // Hauptfunktion, die alles startet
 function initializeUI() {
     updateSystemInfo();
     typeText(terminalOutput, welcomeText);
+    startGlitchEffect();
 }
 
 // Ereignis-Listener für die Eingabezeile
