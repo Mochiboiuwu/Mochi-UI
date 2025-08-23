@@ -1,35 +1,75 @@
 <!DOCTYPE html>
-<html lang="de">
+<html>
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mochi-UI</title>
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline';">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    
-    <div class="tv-effect" id="tv-effect"></div>
 
-    <div class="loader-screen" id="loader-screen">
+    <div id="tv-effect" class="tv-effect"></div>
+
+    <div id="loader-screen" class="loader-screen">
         <pre id="loader-text"></pre>
     </div>
 
-    <div class="main-container hidden" id="main-ui">
-        <div class="header">
-            <div class="info-block">
-                <span>CPU: <span id="cpu-info">...</span></span>
-                <span>RAM: <span id="ram-info">...</span></span>
+    <div id="main-ui" class="main-container hidden">
+        <div class="terminal-window">
+            
+            <div class="header">
+                <div class="info-block">
+                    <span id="os-info">OS: --</span>
+                    <span id="ip-info">IP: --</span>
+                    <span id="hostname-info">Hostname: --</span>
+                </div>
+                <div class="info-block">
+                    <span id="title" class="glitch" data-glitch-text="Mochi-UI">Mochi-UI</span>
+                </div>
             </div>
-            <div class="info-block">
-                <span>IP: <span id="ip-info">...</span></span>
-                <span>OS: <span id="os-info">...</span></span>
+
+            <div class="main-content">
+                <div class="left-sidebar sidebar">
+                    <h3>PROCESSES</h3>
+                    <ul id="process-list" class="process-list">
+                        </ul>
+                </div>
+                
+                <div class="terminal-area">
+                    <pre id="terminal-output" class="terminal-screen"></pre>
+                    <div class="input-line">
+                        <span>></span>
+                        <input type="text" id="command-input" autofocus>
+                    </div>
+                </div>
+
+                <div class="right-sidebar sidebar">
+                    <div class="stats-summary">
+                        <h3>SUMMARY</h3>
+                        <div class="stat-line">
+                            <label>CPU Load</label>
+                            <span id="cpu-load-value">--%</span>
+                        </div>
+                        <div class="stat-line">
+                            <label>RAM Usage</label>
+                            <span id="ram-usage-value">-- GB / -- GB</span>
+                        </div>
+                        <div class="stat-line">
+                            <label>GPU Load</label>
+                            <span id="gpu-load-value">--%</span>
+                        </div>
+                    </div>
+
+                    <div id="stat-details" class="stat-details hidden">
+                        <div class="stat-details-header">
+                            <h3 id="detail-title">DETAILS</h3>
+                            <span id="close-details-btn" class="close-btn">[CLOSE]</span>
+                        </div>
+                        <div class="chart" id="detail-chart"></div>
+                        <div id="detail-info" class="detail-info"></div>
+                    </div>
+                </div>
             </div>
-        </div>
-        <div class="terminal-screen" id="terminal-output">
-            </div>
-        <div class="input-line">
-            <span class="prompt">></span>
-            <input type="text" class="command-input" id="command-input" autofocus>
         </div>
     </div>
 

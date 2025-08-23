@@ -4,14 +4,73 @@ const loaderScreen = document.getElementById('loader-screen');
 const loaderText = document.getElementById('loader-text');
 const tvEffect = document.getElementById('tv-effect');
 
-const cpuInfo = document.getElementById('cpu-info');
-const ramInfo = document.getElementById('ram-info');
-const ipInfo = document.getElementById('ip-info');
 const osInfo = document.getElementById('os-info');
+const ipInfo = document.getElementById('ip-info');
+const hostnameInfo = document.getElementById('hostname-info');
 const terminalOutput = document.getElementById('terminal-output');
 const commandInput = document.getElementById('command-input');
 
-// Simulierter Lade-Text
+const processList = document.getElementById('process-list');
+
+// UI-Elemente für die rechte Seitenleiste
+const rightSidebar = document.querySelector('.right-sidebar');
+const statsSummary = document.querySelector('.stats-summary');
+const statDetails = document.getElementById('stat-details');
+const closeDetailsBtn = document.getElementById('close-details-btn');
+
+const cpuLoadValue = document.getElementById('cpu-load-value');
+const ramUsageValue = document.getElementById('ram-usage-value');
+const gpuLoadValue = document.getElementById('gpu-load-value');
+
+// Detail-Elemente
+const detailTitle = document.getElementById('detail-title');
+const detailChart = document.getElementById('detail-chart');
+const detailInfo = document.getElementById('detail-info');
+
+let systemDetailsCache = null;
+
+function showDetails() {
+    statsSummary.classList.add('hidden');
+    statDetails.classList.remove('hidden');
+    
+    detailTitle.textContent = "SYSTEM DETAILS";
+    if (systemDetailsCache) {
+        updateDetailInfo(systemDetailsCache);
+    }
+}
+
+function updateDetailInfo(info) {
+    const htmlContent = `
+        <h3>CPU Information</h3>
+        <p>Name: ${info.cpu.name}</p>
+        <p>Cores: ${info.cpu.cores}</p>
+        <p>Speed: ${info.cpu.speed}</p>
+
+        <h3>RAM Information</h3>
+        <p>Total: ${info.mem.total} GB</p>
+        <p>Used: ${info.mem.used} GB</p>
+        
+        <h3>GPU Information</h3>
+        <p>Model: ${info.gpu.name}</p>
+        <p>Load: ${info.gpu.load}%</p>
+        <p>VRAM Used: ${info.gpu.memUsed} GB</p>
+        <p>VRAM Total: ${info.gpu.memTotal} GB</p>
+    `;
+    detailInfo.innerHTML = htmlContent;
+}
+
+rightSidebar.addEventListener('click', (event) => {
+    if (!statDetails.classList.contains('hidden')) {
+        showDetails();
+    }
+});
+
+closeDetailsBtn.addEventListener('click', (event) => {
+    event.stopPropagation();
+    statsSummary.classList.remove('hidden');
+    statDetails.classList.add('hidden');
+});
+
 const bootText = [
     "Initializing Mochi-UI v1.0.0...",
     "Scanning system architecture...",
@@ -96,10 +155,39 @@ const bootText = [
     "--------------------------------------"
 ];
 
-// Simulierter Start-Text für das Terminal
 const welcomeText = "Mochi-UI Version 1.0.0\nBooting up...\nConnecting to server...\nConnection established.\nWelcome, user!";
 
-// Funktion, die den Text mit einem coolen Schreibeffekt ausgibt
+async function updateLiveStats() {
+    console.log("updateLiveStats wird aufgerufen...");
+    try {
+        const info = await window.api.getSystemInfo();
+        console.log("Daten vom Hauptprozess empfangen:", info);
+        if (info) {
+            osInfo.innerText = `OS: ${info.os}`;
+            ipInfo.innerText = `IP: ${info.ip}`;
+            hostnameInfo.innerText = `Hostname: ${info.hostname}`;
+            
+            cpuLoadValue.innerText = `${info.cpu.load}%`;
+            ramUsageValue.innerText = `${info.mem.used} GB / ${info.mem.total} GB`;
+            gpuLoadValue.innerText = `${info.gpu.load}%`;
+
+            processList.innerHTML = '';
+            info.processes.forEach(p => {
+                const li = document.createElement('li');
+                li.textContent = `${p.name} - CPU: ${p.cpu}% | RAM: ${p.mem}MB`;
+                processList.appendChild(li);
+            });
+            
+            systemDetailsCache = info;
+            if (!statDetails.classList.contains('hidden')) {
+                updateDetailInfo(info);
+            }
+        }
+    } catch (e) {
+        console.error("Fehler beim Abrufen der Systeminfos:", e);
+    }
+}
+
 function typeText(element, text, index = 0) {
     if (index < text.length) {
         element.textContent += text.charAt(index);
@@ -107,7 +195,6 @@ function typeText(element, text, index = 0) {
     }
 }
 
-// Funktion, die den Lade-Text Zeile für Zeile ausgibt
 function bootSequence(index = 0) {
     if (index < bootText.length) {
         loaderText.textContent += "\n" + bootText[index];
@@ -124,37 +211,19 @@ function bootSequence(index = 0) {
     }
 }
 
-// Systeminformationen aktualisieren (simuliert)
-function updateSystemInfo() {
-    cpuInfo.innerText = "85%";
-    ramInfo.innerText = "16.0GB / 32.0GB";
-    ipInfo.innerText = "192.168.1.101";
-    osInfo.innerText = "MochiOS (1.0)";
-}
-
-// Funktion, die den Glitch-Effekt zufällig auslöst
 function startGlitchEffect() {
-    // Wahrscheinlichkeit für einen globalen Glitch (5%)
-    const globalGlitchChance = 70.5; 
+    const globalGlitchChance = 0.05; 
     const isGlobalGlitch = Math.random() < globalGlitchChance;
-
-    // Zeit, bis der nächste Glitch beginnt (zwischen 5 und 20 Sekunden)
     const glitchDelay = Math.random() * 15000 + 5000;
     
     setTimeout(() => {
         if (isGlobalGlitch) {
-            // Führe den globalen Glitch auf den Haupt-Container aus
             mainUI.classList.add('glitch-all');
-
-            // Entferne die Klassen nach einer kurzen, intensiven Zeit (0.5 Sekunden)
             setTimeout(() => {
                 mainUI.classList.remove('glitch-all');
-                // Starte den Glitch-Effekt erneut
                 startGlitchEffect();
             }, 500);
-
         } else {
-            // Führe den kleinen Glitch auf die inneren Elemente aus
             const glitchTargets = document.querySelectorAll('.header, .terminal-screen, .input-line');
             const targetElement = glitchTargets[Math.floor(Math.random() * glitchTargets.length)];
             
@@ -162,31 +231,26 @@ function startGlitchEffect() {
             targetElement.classList.add('glitch');
             targetElement.setAttribute('data-glitch-text', textContent);
 
-            // Entferne die Klasse nach einer kurzen Zeit (1 Sekunde)
             setTimeout(() => {
                 targetElement.classList.remove('glitch');
-                // Starte den Glitch-Effekt erneut
                 startGlitchEffect();
             }, 1000);
         }
     }, glitchDelay);
 }
 
-
-// Hauptfunktion, die alles startet
 function initializeUI() {
-    updateSystemInfo();
+    updateLiveStats();
+    setInterval(updateLiveStats, 2000);
     typeText(terminalOutput, welcomeText);
     startGlitchEffect();
 }
 
-// Ereignis-Listener für die Eingabezeile
 commandInput.addEventListener('keydown', (event) => {
     if (event.key === 'Enter') {
         const command = commandInput.value.trim();
         if (command !== "") {
             terminalOutput.textContent += `\n> ${command}`;
-
             if (command.toLowerCase() === "help") {
                 terminalOutput.textContent += "\nBefehle: help, clear, exit";
             } else if (command.toLowerCase() === "clear") {
@@ -204,7 +268,6 @@ commandInput.addEventListener('keydown', (event) => {
     }
 });
 
-// Haupt-Logik: Starte die Lade-Sequenz erst, wenn der TV-Effekt vorbei ist
 document.addEventListener('DOMContentLoaded', () => {
     tvEffect.addEventListener('animationend', () => {
         setTimeout(() => {
