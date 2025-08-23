@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mochi-UI</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    
+    <div class="tv-effect" id="tv-effect"></div>
+
+    <div class="loader-screen" id="loader-screen">
+        <pre id="loader-text"></pre>
+    </div>
+
+    <div class="main-container hidden" id="main-ui">
+        <div class="header">
+            <div class="info-block">
+                <span>CPU: <span id="cpu-info">...</span></span>
+                <span>RAM: <span id="ram-info">...</span></span>
+            </div>
+            <div class="info-block">
+                <span>IP: <span id="ip-info">...</span></span>
+                <span>OS: <span id="os-info">...</span></span>
+            </div>
+        </div>
+        <div class="terminal-screen" id="terminal-output">
+            </div>
+        <div class="input-line">
+            <span class="prompt">></span>
+            <input type="text" class="command-input" id="command-input" autofocus>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
