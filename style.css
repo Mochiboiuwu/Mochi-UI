@@ -1,0 +1,145 @@
+/* Grundlegende Einstellungen für die gesamte Seite */
+body {
+    background-color: #0d1a26;
+    color: #00ffaa;
+    font-family: 'Courier New', Courier, monospace;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    margin: 0;
+    overflow: hidden;
+    filter: drop-shadow(0 0 10px #00ffaa);
+}
+
+/* TV-Ausschalte-Effekt */
+.tv-effect {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: #0d1a26;
+    animation: crt-off 0.5s forwards;
+    z-index: 1000;
+}
+
+@keyframes crt-off {
+    0% {
+        transform: scale(1, 1);
+        filter: brightness(1) contrast(1) saturate(1);
+    }
+    100% {
+        transform: scale(0, 1);
+        filter: brightness(0.2) contrast(1.5) saturate(0.5);
+    }
+}
+
+/* Der Ladebildschirm und die Haupt-UI */
+.loader-screen, .main-container {
+    opacity: 0;
+    transition: opacity 1s ease-in-out;
+}
+
+/* Hier die Änderungen für den Ladebildschirm */
+.loader-screen {
+    width: 90%; /* An die Breite der Haupt-UI anpassen */
+    max-width: 1200px; /* An die Breite der Haupt-UI anpassen */
+    height: 80vh; /* An die Höhe der Haupt-UI anpassen */
+    display: flex;
+    flex-direction: column; /* Damit der Text untereinander steht */
+    justify-content: center;
+    align-items: flex-start; /* Text links ausrichten */
+    overflow-y: auto; /* Wichtig: Scrollen aktivieren */
+    padding: 20px; /* Etwas Platz am Rand lassen */
+    box-sizing: border-box;
+}
+
+#loader-text {
+    font-size: 1.2rem;
+    color: #00ffaa;
+    text-shadow: 0 0 10px #00ffaa;
+}
+
+/* Haupt-Container, um die UI zu zentrieren */
+.main-container {
+    width: 90%;
+    max-width: 1200px;
+    height: 80vh;
+    border: 2px solid #00ffaa;
+    box-shadow: 0 0 20px #00ffaa, inset 0 0 10px #00ffaa;
+    position: relative;
+    padding: 20px;
+    box-sizing: border-box;
+    background-color: rgba(0, 0, 0, 0.4);
+    animation: flicker 1s infinite alternate;
+}
+
+/* Die fade-in Klasse macht die Elemente sichtbar */
+.fade-in {
+    opacity: 1;
+}
+
+/* Die hidden-Klasse versteckt ein Element endgültig */
+.hidden {
+    display: none !important;
+}
+
+/* Flimmer-Animation für den Container-Effekt */
+@keyframes flicker {
+    0% { opacity: 1; }
+    100% { opacity: 0.95; }
+}
+
+/* Das Hauptfenster */
+.terminal-window {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Kopfzeile mit den System-Infos */
+.header {
+    display: flex;
+    justify-content: space-between;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #00ffaa;
+    margin-bottom: 10px;
+}
+
+.info-block span {
+    margin-right: 20px;
+}
+
+/* Terminal-Ausgabe-Bereich */
+.terminal-screen {
+    flex-grow: 1;
+    background-color: rgba(0, 0, 0, 0.6);
+    padding: 10px;
+    border: 1px solid #00ffaa;
+    overflow-y: auto;
+    border-radius: 5px;
+    box-shadow: 0 0 10px inset #00ffaa;
+}
+
+/* Eingabezeile */
+.input-line {
+    display: flex;
+    align-items: center;
+    padding-top: 10px;
+}
+
+.prompt {
+    color: #ff00ff;
+    margin-right: 5px;
+}
+
+.command-input {
+    background: transparent;
+    border: none;
+    color: #00ffaa;
+    outline: none;
+    width: 100%;
+    font-family: 'Courier New', Courier, monospace;
+}
