@@ -10,7 +10,11 @@ const hostnameInfo = document.getElementById('hostname-info');
 const terminalOutput = document.getElementById('terminal-output');
 const commandInput = document.getElementById('command-input');
 
+// Element für die linke Seitenleiste
 const processList = document.getElementById('process-list');
+const fileList = document.getElementById('file-list');
+const currentPathElement = document.getElementById('current-path');
+const driveSelector = document.getElementById('drive-selector');
 
 // UI-Elemente für die rechte Seitenleiste
 const rightSidebar = document.querySelector('.right-sidebar');
@@ -22,13 +26,101 @@ const cpuLoadValue = document.getElementById('cpu-load-value');
 const ramUsageValue = document.getElementById('ram-usage-value');
 const gpuLoadValue = document.getElementById('gpu-load-value');
 
-// Detail-Elemente
 const detailTitle = document.getElementById('detail-title');
 const detailChart = document.getElementById('detail-chart');
 const detailInfo = document.getElementById('detail-info');
 
 let systemDetailsCache = null;
+let currentPath = 'C:\\'; // Initialer Pfad für Windows
 
+// --- Funktionen für den Dateiexplorer ---
+async function navigateTo(newPath) {
+    const isWindows = process.platform === 'win32';
+    const path = require('path');
+    let targetPath;
+
+    if (newPath === '..') {
+        const pathParts = currentPath.split(isWindows ? '\\' : '/').filter(p => p !== '');
+        pathParts.pop();
+        if (pathParts.length > 0) {
+            targetPath = pathParts.join(isWindows ? '\\' : '/') + (isWindows ? '\\' : '/');
+        } else {
+            targetPath = isWindows ? 'C:\\' : '/';
+        }
+    } else {
+        if (path.isAbsolute(newPath)) {
+            targetPath = newPath;
+        } else {
+            targetPath = path.join(currentPath, newPath);
+        }
+    }
+    
+    const result = await window.api.getDirContents(targetPath);
+
+    if (result.success) {
+        currentPath = result.path;
+        currentPathElement.textContent = result.path;
+        displayFiles(result.contents);
+    } else {
+        terminalOutput.textContent += `\nFehler: Zugriff auf "${targetPath}" verweigert.`;
+        terminalOutput.scrollTop = terminalOutput.scrollHeight;
+    }
+}
+
+function displayFiles(files) {
+    fileList.innerHTML = '';
+    files.forEach(item => {
+        const li = document.createElement('li');
+        li.textContent = item.name;
+        if (item.isDir) {
+            li.classList.add('folder');
+        } else {
+            li.classList.add('file');
+        }
+
+        if (item.name === '..') {
+            li.classList.add('parent-dir');
+        }
+
+        li.addEventListener('click', () => {
+            if (item.isDir) {
+                navigateTo(item.name);
+            } else {
+                terminalOutput.textContent += `\n> Befehl: Öffne Datei ${item.name}`;
+                terminalOutput.scrollTop = terminalOutput.scrollHeight;
+            }
+        });
+        fileList.appendChild(li);
+    });
+}
+
+async function listDrives() {
+    const isWindows = process.platform === 'win32';
+    if (!isWindows) {
+        driveSelector.style.display = 'none';
+        return;
+    }
+
+    // Temporäre Funktion zum Abrufen von Laufwerken (muss in main.js implementiert werden)
+    const drives = ['C:\\', 'D:\\', 'E:\\']; // Beispiel-Laufwerke
+    
+    driveSelector.innerHTML = '';
+    drives.forEach(drive => {
+        const option = document.createElement('option');
+        option.value = drive;
+        option.textContent = drive;
+        driveSelector.appendChild(option);
+    });
+
+    driveSelector.value = currentPath.substring(0, 3); // Wählt das aktuelle Laufwerk aus
+}
+
+driveSelector.addEventListener('change', (event) => {
+    const selectedDrive = event.target.value;
+    navigateTo(selectedDrive);
+});
+
+// --- Funktionen für die Haupt-UI ---
 function showDetails() {
     statsSummary.classList.add('hidden');
     statDetails.classList.remove('hidden');
@@ -42,19 +134,17 @@ function showDetails() {
 function updateDetailInfo(info) {
     const htmlContent = `
         <h3>CPU Information</h3>
-        <p>Name: ${info.cpu.name}</p>
-        <p>Cores: ${info.cpu.cores}</p>
-        <p>Speed: ${info.cpu.speed}</p>
+        <p>Name: ${info.cpu.name || 'N/A'}</p>
+        <p>Cores: ${info.cpu.cores || 'N/A'}</p>
+        <p>Speed: ${info.cpu.speed || 'N/A'}</p>
 
         <h3>RAM Information</h3>
         <p>Total: ${info.mem.total} GB</p>
         <p>Used: ${info.mem.used} GB</p>
         
         <h3>GPU Information</h3>
-        <p>Model: ${info.gpu.name}</p>
-        <p>Load: ${info.gpu.load}%</p>
-        <p>VRAM Used: ${info.gpu.memUsed} GB</p>
-        <p>VRAM Total: ${info.gpu.memTotal} GB</p>
+        <p>Model: ${info.gpu.name || 'N/A'}</p>
+        <p>Load: ${info.gpu.load || 'N/A'}%</p>
     `;
     detailInfo.innerHTML = htmlContent;
 }
@@ -158,33 +248,27 @@ const bootText = [
 const welcomeText = "Mochi-UI Version 1.0.0\nBooting up...\nConnecting to server...\nConnection established.\nWelcome, user!";
 
 async function updateLiveStats() {
-    console.log("updateLiveStats wird aufgerufen...");
-    try {
-        const info = await window.api.getSystemInfo();
-        console.log("Daten vom Hauptprozess empfangen:", info);
-        if (info) {
-            osInfo.innerText = `OS: ${info.os}`;
-            ipInfo.innerText = `IP: ${info.ip}`;
-            hostnameInfo.innerText = `Hostname: ${info.hostname}`;
-            
-            cpuLoadValue.innerText = `${info.cpu.load}%`;
-            ramUsageValue.innerText = `${info.mem.used} GB / ${info.mem.total} GB`;
-            gpuLoadValue.innerText = `${info.gpu.load}%`;
+    const info = await window.api.getSystemInfo();
+    if (info) {
+        osInfo.innerText = `OS: ${info.os}`;
+        ipInfo.innerText = `IP: ${info.ip}`;
+        hostnameInfo.innerText = `Hostname: ${info.hostname}`;
+        
+        cpuLoadValue.innerText = `${info.cpu.load}%`;
+        ramUsageValue.innerText = `${info.mem.used} GB / ${info.mem.total} GB`;
+        gpuLoadValue.innerText = `${info.gpu.load}%`;
 
-            processList.innerHTML = '';
-            info.processes.forEach(p => {
-                const li = document.createElement('li');
-                li.textContent = `${p.name} - CPU: ${p.cpu}% | RAM: ${p.mem}MB`;
-                processList.appendChild(li);
-            });
-            
-            systemDetailsCache = info;
-            if (!statDetails.classList.contains('hidden')) {
-                updateDetailInfo(info);
-            }
+        processList.innerHTML = '';
+        info.processes.forEach(p => {
+            const li = document.createElement('li');
+            li.textContent = `${p.name} - CPU: ${p.cpu}% | RAM: ${p.mem}MB`;
+            processList.appendChild(li);
+        });
+        
+        systemDetailsCache = info;
+        if (!statDetails.classList.contains('hidden')) {
+            updateDetailInfo(info);
         }
-    } catch (e) {
-        console.error("Fehler beim Abrufen der Systeminfos:", e);
     }
 }
 
@@ -244,36 +328,39 @@ function initializeUI() {
     setInterval(updateLiveStats, 2000);
     typeText(terminalOutput, welcomeText);
     startGlitchEffect();
+    navigateTo(currentPath);
+    listDrives();
 }
 
-commandInput.addEventListener('keydown', (event) => {
+commandInput.addEventListener('keydown', async (event) => {
     if (event.key === 'Enter') {
         const command = commandInput.value.trim();
         if (command !== "") {
             terminalOutput.textContent += `\n> ${command}`;
-            if (command.toLowerCase() === "help") {
-                terminalOutput.textContent += "\nBefehle: help, clear, exit";
-            } else if (command.toLowerCase() === "clear") {
-                terminalOutput.textContent = "";
-                typeText(terminalOutput, welcomeText);
-            } else if (command.toLowerCase() === "exit") {
-                terminalOutput.textContent += "\nShutting down...";
-                setTimeout(() => window.close(), 2000);
+            
+            const result = await window.api.executeCommand(command);
+            
+            if (result.error) {
+                terminalOutput.textContent += `\nFehler: ${result.error}`;
             } else {
-                terminalOutput.textContent += "\nUnbekannter Befehl. Tippe 'help' für eine Liste.";
+                terminalOutput.textContent += `\n${result.output}`;
             }
+            
             terminalOutput.scrollTop = terminalOutput.scrollHeight;
             commandInput.value = '';
         }
     }
 });
 
+// Neu: Führt die Boot-Sequenz beim Laden der Seite aus
 document.addEventListener('DOMContentLoaded', () => {
+    // Stellen Sie sicher, dass der TV-Effekt zu Beginn sichtbar ist
+    tvEffect.classList.remove('hidden');
+    
+    // Die Boot-Sequenz startet jetzt nach dem TV-Effekt
     tvEffect.addEventListener('animationend', () => {
-        setTimeout(() => {
-            tvEffect.classList.add('hidden');
-            loaderScreen.classList.add('fade-in');
-            bootSequence();
-        }, 500);
+        tvEffect.classList.add('hidden');
+        loaderScreen.classList.add('fade-in');
+        bootSequence();
     });
 });

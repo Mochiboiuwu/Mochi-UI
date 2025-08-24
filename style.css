@@ -60,18 +60,17 @@ body {
     text-shadow: 0 0 10px #00ffaa;
 }
 
-/* Haupt-Container, um die UI zu zentrieren */
+/* Hauptelement füllt jetzt den gesamten Bildschirm aus */
 .main-container {
-    width: 90%;
-    max-width: 1200px;
-    height: 80vh;
-    border: 2px solid #00ffaa;
-    box-shadow: 0 0 20px #00ffaa, inset 0 0 10px #00ffaa;
+    width: 100vw;
+    height: 100vh;
+    border: none;
+    box-shadow: none;
     position: relative;
     padding: 20px;
     box-sizing: border-box;
-    background-color: rgba(0, 0, 0, 0.4);
-    animation: flicker 1s infinite alternate;
+    background-color: #0d1a26;
+    animation: none;
 }
 
 /* Die fade-in Klasse macht die Elemente sichtbar */
@@ -240,6 +239,7 @@ body {
     height: 100%;
 }
 
+/* Die Sidebar-Container haben jetzt eine eigene Box-Shadow für den Fenster-Effekt */
 .sidebar {
     width: 300px;
     padding: 15px;
@@ -249,7 +249,8 @@ body {
     display: flex;
     flex-direction: column;
     overflow-y: auto;
-    position: relative; /* Wichtig für die Positionierung der Details */
+    position: relative;
+    animation: flicker 1s infinite alternate; /* Fenster-Flimmern */
 }
 
 /* Stile für die Seitenleisten */
@@ -259,7 +260,7 @@ body {
 
 .right-sidebar {
     width: 300px;
-    cursor: pointer; /* Zeigt an, dass man darauf klicken kann */
+    cursor: pointer;
 }
 
 /* Stile für Überschriften und Listen */
@@ -296,6 +297,102 @@ body {
     flex-direction: column;
 }
 
+.terminal-screen {
+    flex-grow: 1; /* Nimmt den verbleibenden Platz ein */
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    font-size: 1em;
+    padding: 10px;
+    box-sizing: border-box;
+    overflow-y: auto;
+}
+
+.input-line {
+    display: flex;
+    align-items: center;
+    margin-top: 10px;
+}
+
+.input-line span {
+    margin-right: 5px;
+    color: #ff00ff;
+}
+
+#command-input {
+    background: none;
+    border: none;
+    outline: none;
+    color: #00ffaa;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 1em;
+    flex-grow: 1;
+}
+
+/* **Neuer Container für den Explorer in der Mitte** */
+.explorer-container {
+    padding: 15px;
+    border: 1px solid #00ffaa;
+    box-shadow: 0 0 10px inset #00ffaa;
+    background-color: rgba(0, 0, 0, 0.4);
+    animation: flicker 1s infinite alternate;
+    height: 40%; /* Nimmt 40% des Platzes im Terminal-Bereich ein */
+    margin-top: 20px;
+    display: flex;
+    flex-direction: column;
+}
+
+.explorer-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    border-bottom: 1px dashed #00ffaa;
+    padding-bottom: 5px;
+}
+
+#current-path {
+    color: #ff00ff;
+    text-shadow: 0 0 5px #ff00ff;
+    margin: 0;
+    word-break: break-all;
+}
+
+#drive-selector {
+    background: none;
+    border: 1px solid #00ffaa;
+    color: #00ffaa;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 1em;
+    padding: 3px;
+    cursor: pointer;
+}
+
+.file-list {
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+    font-size: 0.9em;
+    flex-grow: 1;
+    overflow-y: auto;
+}
+
+.file-list li {
+    padding: 3px 0;
+    cursor: pointer;
+}
+
+.file-list li:hover {
+    background-color: rgba(0, 255, 170, 0.1);
+}
+
+.file-list .folder {
+    color: #00ffaa;
+}
+
+.file-list .file {
+    color: #ffffff;
+}
+
 /* **Stile für die rechte Seitenleiste** */
 .stat-line {
     display: flex;
@@ -325,7 +422,7 @@ body {
     box-sizing: border-box;
     display: flex;
     flex-direction: column;
-    z-index: 20; /* Stellt sicher, dass die Details über der Zusammenfassung liegen */
+    z-index: 20;
     transition: all 0.3s ease;
 }
 
