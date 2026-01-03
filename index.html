@@ -1,63 +1,79 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Mochi-UI</title>
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline';">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mochi-UI - Advanced System Monitor</title>
+    <meta http-equiv="Content-Security-Policy" 
+          content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline';">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-
+    <!-- TV Boot Effect -->
     <div id="tv-effect" class="tv-effect"></div>
 
+    <!-- Boot/Loader Screen -->
     <div id="loader-screen" class="loader-screen">
         <pre id="loader-text"></pre>
     </div>
 
+    <!-- Main Application UI -->
     <div id="main-ui" class="main-container hidden">
         <div class="terminal-window">
             
+            <!-- Header Section with System Info -->
             <div class="header">
                 <div class="info-block">
-                    <span id="os-info">OS: --</span>
-                    <span id="ip-info">IP: --</span>
-                    <span id="hostname-info">Hostname: --</span>
+                    <span id="os-info">OS: Initializing...</span>
+                    <span id="ip-info">IP: Scanning...</span>
+                    <span id="hostname-info">Host: Connecting...</span>
                 </div>
                 <div class="info-block">
-                    <span id="title" class="glitch" data-glitch-text="Mochi-UI">Mochi-UI</span>
+                    <span id="title" class="glitch" data-glitch-text="MOCHI-UI">MOCHI-UI</span>
                 </div>
             </div>
 
+            <!-- Main Content Grid (3 Columns) -->
             <div class="main-content">
-                <div class="left-sidebar sidebar">
+                
+                <!-- LEFT SIDEBAR: System Processes -->
+                <div class="sidebar left-sidebar">
                     <h3>PROCESSES</h3>
-                    <ul id="process-list" class="process-list">
-                        </ul>
+                    <ul id="process-list" class="process-list"></ul>
                 </div>
                 
+                <!-- CENTER: Terminal & File Explorer -->
                 <div class="terminal-area">
+                    
+                    <!-- Terminal Output -->
                     <pre id="terminal-output" class="terminal-screen"></pre>
+                    
+                    <!-- Command Input Line -->
                     <div class="input-line">
                         <span>></span>
-                        <input type="text" id="command-input" autofocus>
+                        <input type="text" 
+                               id="command-input" 
+                               placeholder="Enter command or type 'help' for assistance"
+                               autofocus>
                     </div>
 
+                    <!-- File Explorer -->
                     <div id="explorer-container" class="explorer-container">
                         <div class="explorer-header">
                             <h3 id="current-path">C:\</h3>
                             <select id="drive-selector"></select>
                         </div>
-                        <ul id="file-list" class="file-list">
-                            </ul>
+                        <ul id="file-list" class="file-list"></ul>
                     </div>
                 </div>
 
-                <div class="right-sidebar sidebar">
+                <!-- RIGHT SIDEBAR: System Statistics -->
+                <div class="sidebar right-sidebar">
                     <div class="stats-summary">
-                        <h3>SUMMARY</h3>
+                        <h3>SYSTEM STATS</h3>
                         <div class="stat-line">
                             <label>CPU Load</label>
-                            <span id="cpu-load-value">--%</span>
+                            <span id="cpu-load-value">-- %</span>
                         </div>
                         <div class="stat-line">
                             <label>RAM Usage</label>
@@ -65,16 +81,23 @@
                         </div>
                         <div class="stat-line">
                             <label>GPU Load</label>
-                            <span id="gpu-load-value">--%</span>
+                            <span id="gpu-load-value">-- %</span>
+                        </div>
+                        <div class="stat-line">
+                            <label>Uptime</label>
+                            <span id="uptime-value">-- h</span>
                         </div>
                     </div>
 
+                    <!-- Detailed Statistics Modal -->
                     <div id="stat-details" class="stat-details hidden">
                         <div class="stat-details-header">
-                            <h3 id="detail-title">DETAILS</h3>
+                            <h3 id="detail-title">SYSTEM DETAILS</h3>
                             <span id="close-details-btn" class="close-btn">[CLOSE]</span>
                         </div>
-                        <div class="chart" id="detail-chart"></div>
+                        <div class="chart" id="detail-chart">
+                            <div class="chart-bar" id="chart-bars"></div>
+                        </div>
                         <div id="detail-info" class="detail-info"></div>
                     </div>
                 </div>
@@ -82,6 +105,7 @@
         </div>
     </div>
 
+    <!-- Application Scripts -->
     <script src="script.js"></script>
 </body>
 </html>

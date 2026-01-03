@@ -1,22 +1,33 @@
-// Rufe die HTML-Elemente auf, die wir manipulieren möchten
+/* ============================================
+   MOCHI-UI v2.0 - Advanced Script
+   High-Performance System Monitor & Terminal
+   ============================================ */
+
+// DOM Element References
 const mainUI = document.getElementById('main-ui');
 const loaderScreen = document.getElementById('loader-screen');
 const loaderText = document.getElementById('loader-text');
 const tvEffect = document.getElementById('tv-effect');
 
+// Header Elements
 const osInfo = document.getElementById('os-info');
 const ipInfo = document.getElementById('ip-info');
 const hostnameInfo = document.getElementById('hostname-info');
+
+// Terminal Elements
 const terminalOutput = document.getElementById('terminal-output');
 const commandInput = document.getElementById('command-input');
 
-// Element für die linke Seitenleiste
+// Left Sidebar - Processes
 const processList = document.getElementById('process-list');
+
+// Center - File Explorer
 const fileList = document.getElementById('file-list');
 const currentPathElement = document.getElementById('current-path');
 const driveSelector = document.getElementById('drive-selector');
+const explorerContainer = document.getElementById('explorer-container');
 
-// UI-Elemente für die rechte Seitenleiste
+// Right Sidebar - Stats
 const rightSidebar = document.querySelector('.right-sidebar');
 const statsSummary = document.querySelector('.stats-summary');
 const statDetails = document.getElementById('stat-details');
@@ -25,342 +36,554 @@ const closeDetailsBtn = document.getElementById('close-details-btn');
 const cpuLoadValue = document.getElementById('cpu-load-value');
 const ramUsageValue = document.getElementById('ram-usage-value');
 const gpuLoadValue = document.getElementById('gpu-load-value');
+const uptimeValue = document.getElementById('uptime-value');
 
 const detailTitle = document.getElementById('detail-title');
 const detailChart = document.getElementById('detail-chart');
+const chartBars = document.getElementById('chart-bars');
 const detailInfo = document.getElementById('detail-info');
 
+// State Variables
 let systemDetailsCache = null;
-let currentPath = 'C:\\'; // Initialer Pfad für Windows
+let currentPath = 'C:\\';
+let systemStartTime = Date.now();
+let statsHistory = {
+  cpu: [],
+  ram: [],
+  maxHistory: 60
+};
 
-// --- Funktionen für den Dateiexplorer ---
+/* ============================================
+   FILE EXPLORER FUNCTIONS
+   ============================================ */
+
+/**
+ * Navigate to a directory in the file system
+ */
 async function navigateTo(newPath) {
-    const isWindows = process.platform === 'win32';
-    const path = require('path');
-    let targetPath;
+  const isWindows = process.platform === 'win32';
+  const path = require('path');
+  let targetPath;
 
-    if (newPath === '..') {
-        const pathParts = currentPath.split(isWindows ? '\\' : '/').filter(p => p !== '');
-        pathParts.pop();
-        if (pathParts.length > 0) {
-            targetPath = pathParts.join(isWindows ? '\\' : '/') + (isWindows ? '\\' : '/');
-        } else {
-            targetPath = isWindows ? 'C:\\' : '/';
-        }
+  if (newPath === '..') {
+    const pathParts = currentPath.split(isWindows ? '\\' : '/').filter(p => p !== '');
+    pathParts.pop();
+    if (pathParts.length > 0) {
+      targetPath = pathParts.join(isWindows ? '\\' : '/') + (isWindows ? '\\' : '/');
     } else {
-        if (path.isAbsolute(newPath)) {
-            targetPath = newPath;
-        } else {
-            targetPath = path.join(currentPath, newPath);
-        }
+      targetPath = isWindows ? 'C:\\' : '/';
     }
-    
-    const result = await window.api.getDirContents(targetPath);
+  } else {
+    if (path.isAbsolute(newPath)) {
+      targetPath = newPath;
+    } else {
+      targetPath = path.join(currentPath, newPath);
+    }
+  }
+  
+  const result = await window.api.getDirContents(targetPath);
 
-    if (result.success) {
-        currentPath = result.path;
-        currentPathElement.textContent = result.path;
-        displayFiles(result.contents);
-    } else {
-        terminalOutput.textContent += `\nFehler: Zugriff auf "${targetPath}" verweigert.`;
-        terminalOutput.scrollTop = terminalOutput.scrollHeight;
-    }
+  if (result.success) {
+    currentPath = result.path;
+    currentPathElement.textContent = currentPath;
+    displayFiles(result.contents);
+  } else {
+    appendTerminalOutput(`\n[ERROR] Access denied: "${targetPath}"`);
+  }
 }
 
+/**
+ * Display files and folders in the file explorer
+ */
 function displayFiles(files) {
-    fileList.innerHTML = '';
-    files.forEach(item => {
-        const li = document.createElement('li');
-        li.textContent = item.name;
-        if (item.isDir) {
-            li.classList.add('folder');
-        } else {
-            li.classList.add('file');
-        }
-
-        if (item.name === '..') {
-            li.classList.add('parent-dir');
-        }
-
-        li.addEventListener('click', () => {
-            if (item.isDir) {
-                navigateTo(item.name);
-            } else {
-                terminalOutput.textContent += `\n> Befehl: Öffne Datei ${item.name}`;
-                terminalOutput.scrollTop = terminalOutput.scrollHeight;
-            }
-        });
-        fileList.appendChild(li);
-    });
-}
-
-async function listDrives() {
-    const isWindows = process.platform === 'win32';
-    if (!isWindows) {
-        driveSelector.style.display = 'none';
-        return;
+  fileList.innerHTML = '';
+  
+  files.forEach((item, index) => {
+    const li = document.createElement('li');
+    li.textContent = item.name;
+    
+    if (item.isDir) {
+      li.classList.add('folder');
+      li.setAttribute('title', 'Click to enter directory');
+    } else {
+      li.classList.add('file');
+      li.setAttribute('title', 'File: ' + item.name);
     }
 
-    // Temporäre Funktion zum Abrufen von Laufwerken (muss in main.js implementiert werden)
-    const drives = ['C:\\', 'D:\\', 'E:\\']; // Beispiel-Laufwerke
-    
-    driveSelector.innerHTML = '';
-    drives.forEach(drive => {
-        const option = document.createElement('option');
-        option.value = drive;
-        option.textContent = drive;
-        driveSelector.appendChild(option);
+    if (item.name === '..') {
+      li.classList.add('parent-dir');
+    }
+
+    // Stagger animation
+    li.style.animationDelay = (index * 0.05) + 's';
+
+    li.addEventListener('click', () => {
+      if (item.isDir) {
+        navigateTo(item.name);
+      } else {
+        appendTerminalOutput(`\n[INFO] Selected file: ${item.name}`);
+      }
     });
 
-    driveSelector.value = currentPath.substring(0, 3); // Wählt das aktuelle Laufwerk aus
+    li.addEventListener('mouseenter', () => {
+      li.style.textShadow = '0 0 15px rgba(0, 255, 65, 1)';
+    });
+
+    li.addEventListener('mouseleave', () => {
+      li.style.textShadow = 'none';
+    });
+
+    fileList.appendChild(li);
+  });
+}
+
+/**
+ * List available disk drives (Windows)
+ */
+async function listDrives() {
+  const isWindows = process.platform === 'win32';
+  if (!isWindows) {
+    driveSelector.style.display = 'none';
+    return;
+  }
+
+  // Default Windows drives - can be extended with actual detection
+  const drives = ['C:\\', 'D:\\', 'E:\\', 'F:\\'];
+  
+  driveSelector.innerHTML = '';
+  drives.forEach(drive => {
+    const option = document.createElement('option');
+    option.value = drive;
+    option.textContent = drive;
+    driveSelector.appendChild(option);
+  });
+
+  driveSelector.value = currentPath.substring(0, 3);
 }
 
 driveSelector.addEventListener('change', (event) => {
-    const selectedDrive = event.target.value;
-    navigateTo(selectedDrive);
+  const selectedDrive = event.target.value;
+  navigateTo(selectedDrive);
 });
 
-// --- Funktionen für die Haupt-UI ---
-function showDetails() {
-    statsSummary.classList.add('hidden');
-    statDetails.classList.remove('hidden');
+/* ============================================
+   STATISTICS & MONITORING FUNCTIONS
+   ============================================ */
+
+/**
+ * Update real-time system statistics
+ */
+async function updateLiveStats() {
+  const info = await window.api.getSystemInfo();
+  if (!info) return;
+
+  // Update header information
+  osInfo.textContent = `OS: ${info.os || 'Unknown'}`;
+  ipInfo.textContent = `IP: ${info.ip || 'N/A'}`;
+  hostnameInfo.textContent = `Hostname: ${info.hostname || 'Unknown'}`;
+  
+  // Update system load statistics
+  const cpuLoad = parseFloat(info.cpu.load) || 0;
+  const ramUsed = parseFloat(info.mem.used) || 0;
+  const ramTotal = parseFloat(info.mem.total) || 0;
+  
+  cpuLoadValue.textContent = `${cpuLoad.toFixed(1)} %`;
+  ramUsageValue.textContent = `${ramUsed.toFixed(2)} GB / ${ramTotal.toFixed(2)} GB`;
+  gpuLoadValue.textContent = `${info.gpu.load || 'N/A'} %`;
+  
+  // Calculate uptime
+  const uptimeMs = Date.now() - systemStartTime;
+  const uptimeHours = (uptimeMs / (1000 * 60 * 60)).toFixed(1);
+  uptimeValue.textContent = `${uptimeHours} h`;
+
+  // Store in history for charting
+  statsHistory.cpu.push(cpuLoad);
+  statsHistory.ram.push((ramUsed / ramTotal) * 100);
+  
+  if (statsHistory.cpu.length > statsHistory.maxHistory) {
+    statsHistory.cpu.shift();
+    statsHistory.ram.shift();
+  }
+
+  // Update process list
+  updateProcessList(info.processes);
+
+  // Cache for detail view
+  systemDetailsCache = info;
+  
+  if (!statDetails.classList.contains('hidden')) {
+    updateDetailInfo(info);
+  }
+}
+
+/**
+ * Update process list in left sidebar
+ */
+function updateProcessList(processes) {
+  processList.innerHTML = '';
+  
+  // Show top 10 processes
+  processes.slice(0, 10).forEach((process, index) => {
+    const li = document.createElement('li');
+    li.textContent = `${process.name.substring(0, 20)}... | CPU: ${process.cpu}% | RAM: ${process.mem}MB`;
+    li.setAttribute('title', process.name);
+    li.style.animationDelay = (index * 0.05) + 's';
     
-    detailTitle.textContent = "SYSTEM DETAILS";
-    if (systemDetailsCache) {
-        updateDetailInfo(systemDetailsCache);
-    }
+    li.addEventListener('mouseenter', () => {
+      li.style.background = 'rgba(0, 212, 255, 0.25)';
+      li.style.textShadow = '0 0 15px rgba(0, 212, 255, 0.8)';
+    });
+    
+    li.addEventListener('mouseleave', () => {
+      li.style.background = 'rgba(0, 212, 255, 0.05)';
+      li.style.textShadow = 'none';
+    });
+    
+    processList.appendChild(li);
+  });
 }
 
+/**
+ * Display detailed system information
+ */
+function showDetails() {
+  statsSummary.classList.add('hidden');
+  statDetails.classList.remove('hidden');
+  
+  if (systemDetailsCache) {
+    updateDetailInfo(systemDetailsCache);
+  }
+}
+
+/**
+ * Update detailed information display
+ */
 function updateDetailInfo(info) {
-    const htmlContent = `
-        <h3>CPU Information</h3>
-        <p>Name: ${info.cpu.name || 'N/A'}</p>
-        <p>Cores: ${info.cpu.cores || 'N/A'}</p>
-        <p>Speed: ${info.cpu.speed || 'N/A'}</p>
+  // Create chart
+  createStatsChart();
+  
+  // Create detailed information
+  const htmlContent = `
+    <h3>🖥️ CPU Information</h3>
+    <p><strong>Model:</strong> ${info.cpu.name || 'N/A'}</p>
+    <p><strong>Cores:</strong> ${info.cpu.cores || 'N/A'}</p>
+    <p><strong>Clock Speed:</strong> ${info.cpu.speed || 'N/A'}</p>
+    <p><strong>Current Load:</strong> ${info.cpu.load || 'N/A'}%</p>
 
-        <h3>RAM Information</h3>
-        <p>Total: ${info.mem.total} GB</p>
-        <p>Used: ${info.mem.used} GB</p>
-        
-        <h3>GPU Information</h3>
-        <p>Model: ${info.gpu.name || 'N/A'}</p>
-        <p>Load: ${info.gpu.load || 'N/A'}%</p>
-    `;
-    detailInfo.innerHTML = htmlContent;
+    <h3>💾 Memory Information</h3>
+    <p><strong>Total RAM:</strong> ${info.mem.total || 'N/A'} GB</p>
+    <p><strong>Used RAM:</strong> ${info.mem.used || 'N/A'} GB</p>
+    <p><strong>Usage Percentage:</strong> ${((info.mem.used / info.mem.total) * 100).toFixed(1)}%</p>
+    
+    <h3>🎮 GPU Information</h3>
+    <p><strong>Model:</strong> ${info.gpu.name || 'N/A'}</p>
+    <p><strong>Load:</strong> ${info.gpu.load || 'N/A'}%</p>
+
+    <h3>🌐 Network Information</h3>
+    <p><strong>IP Address:</strong> ${info.ip || 'N/A'}</p>
+    <p><strong>Hostname:</strong> ${info.hostname || 'N/A'}</p>
+    <p><strong>OS:</strong> ${info.os || 'N/A'}</p>
+
+    <h3>📊 Running Processes (Top 10)</h3>
+    ${info.processes.slice(0, 10).map((p, i) => 
+      `<p>${i + 1}. <strong>${p.name}</strong> - CPU: ${p.cpu}% | RAM: ${p.mem}MB</p>`
+    ).join('')}
+  `;
+  
+  detailInfo.innerHTML = htmlContent;
 }
 
+/**
+ * Create a simple bar chart from statistics history
+ */
+function createStatsChart() {
+  chartBars.innerHTML = '';
+  
+  const maxValue = Math.max(...statsHistory.cpu, ...statsHistory.ram, 1);
+  
+  // Show last 30 data points
+  const displayData = statsHistory.cpu.slice(-30);
+  
+  displayData.forEach((value) => {
+    const bar = document.createElement('div');
+    bar.className = 'chart-bar-item';
+    const height = (value / maxValue) * 100;
+    bar.style.height = height + '%';
+    bar.setAttribute('title', value.toFixed(1) + '%');
+    chartBars.appendChild(bar);
+  });
+}
+
+// Right sidebar click handler for details
 rightSidebar.addEventListener('click', (event) => {
-    if (!statDetails.classList.contains('hidden')) {
-        showDetails();
-    }
+  if (!statDetails.classList.contains('hidden')) return;
+  if (event.target.closest('.stat-details')) return;
+  showDetails();
 });
 
 closeDetailsBtn.addEventListener('click', (event) => {
-    event.stopPropagation();
-    statsSummary.classList.remove('hidden');
-    statDetails.classList.add('hidden');
+  event.stopPropagation();
+  statsSummary.classList.remove('hidden');
+  statDetails.classList.add('hidden');
 });
 
-const bootText = [
-    "Initializing Mochi-UI v1.0.0...",
-    "Scanning system architecture...",
-    "Loading kernel modules...",
-    "Verifying integrity of core components...",
-    "Establishing secure quantum link...",
-    "Parsing protocol manifest...",
-    "Compiling graphical user interface...",
-    "Rendering fractal encryption matrix...",
-    "Defragmenting virtual memory...",
-    "Calibrating chronometric displacement...",
-    "Running diagnostic routines...",
-    "Bypassing security protocols...",
-    "Accessing encrypted data streams...",
-    "Initializing display drivers...",
-    "Loading holographic overlays...",
-    "Activating retinal projection...",
-    "Executing final boot sequence...",
-    "Boot sequence complete.",
-    "--------------------------------------",
-    "  MOCHI-UI SYSTEM BOOT SEQUENCE",
-    "--------------------------------------",
-    "  [STATUS] Loading core system libraries...",
-    "  [STATUS] Verifying kernel checksums...",
-    "  [STATUS] Initializing network stack...",
-    "  [OK] Network stack initialized.",
-    "  [STATUS] Scanning for active devices...",
-    "  [OK] Device drivers loaded.",
-    "  [STATUS] Allocating memory blocks...",
-    "  [OK] Memory allocation successful.",
-    "  [STATUS] Launching security protocols...",
-    "  [OK] Security protocols active.",
-    "  [STATUS] Establishing server connection...",
-    "  [OK] Connection to main server secured.",
-    "  [STATUS] Loading user profile data...",
-    "  [OK] Profile data loaded.",
-    "  [STATUS] Starting terminal emulation...",
-    "  [OK] Terminal emulation ready.",
-    "  [STATUS] Finalizing system boot...",
-    "  [COMPLETE] Mochi-UI is now online.",
-    "--------------------------------------",
-    "  [0x00A0] SYSTEM::BOOT_SEQUENCE.init()...",
-    "  [0x00A1] KERNEL::LOAD_MODULES.secure_load()...",
-    "  [0x00A2] DRIVER::HDD_CONTROLLER.online...",
-    "  [0x00A3] DRIVER::NET_ADAPTER.online...",
-    "  [0x00A4] DRIVER::GPU_RENDER.online...",
-    "  [0x00A5] CPU::INSTRUCTION_SET.enable_all()...",
-    "  [0x00A6] MEMORY::CACHE_FLUSH.complete...",
-    "  [0x00A7] SECURITY::FIREWALL.active...",
-    "  [0x00A8] NETWORK::IP_CONFIG.assigned: 192.168.1.101...",
-    "  [0x00A9] USER::PROFILE.validate_token()...",
-    "  [0x00AA] UI::RENDERER.load_assets()...",
-    "  [0x00AB] FONT::LOAD_FONT.complete...",
-    "  [0x00AC] SCRIPT::EXECUTE_SCRIPT.mochi.js...",
-    "  [0x00AD] SYSTEM::FINAL_CHECKS.complete...",
-    "  [0x00AE] BOOT::SEQUENCE_COMPLETE.true...",
-    "  [0x00AF] LAUNCHING UI...",
-    "  [0x00B0] Starting core diagnostics suite...",
-    "  [0x00B1] Checking system clock synchronization...",
-    "  [0x00B2] Initializing data stream encryption protocols...",
-    "  [0x00B3] Establishing secure channel to remote server...",
-    "  [0x00B4] Verifying cryptographic signatures...",
-    "  [0x00B5] Running integrity check on filesystem...",
-    "  [0x00B6] Finalizing network interface configuration...",
-    "  [0x00B7] Activating user session...",
-    "  [0x00B8] Loading UI presets and configuration...",
-    "  [0x00B9] Syncing with cloud storage...",
-    "  [0x00BA] Checking for new software updates...",
-    "  [0x00BB] Optimizing system performance...",
-    "  [0x00BC] Verifying system resources...",
-    "  [0x00BD] Authenticating remote access protocols...",
-    "  [0x00BE] Initializing user authentication module...",
-    "  [0x00BF] Running pre-boot security scan...",
-    "  [0x00C0] Core processes launched successfully.",
-    "  [0x00C1] Kernel services operational.",
-    "  [0x00C2] Display drivers fully loaded.",
-    "  [0x00C3] Network stack configured and active.",
-    "  [0x00C4] System boot complete.",
-    "  [0x00C5] Starting welcome sequence...",
-    "  [0x00C6] Welcome user...",
-    "  [0x00C7] Have a nice day.",
-    "--------------------------------------"
+/* ============================================
+   TERMINAL & COMMAND EXECUTION
+   ============================================ */
+
+/**
+ * Append text to terminal output with animation
+ */
+function appendTerminalOutput(text) {
+  terminalOutput.textContent += text;
+  terminalOutput.scrollTop = terminalOutput.scrollHeight;
+  
+  // Animate new content
+  const lines = terminalOutput.textContent.split('\n');
+  const lastLine = lines[lines.length - 1];
+  
+  if (lastLine) {
+    terminalOutput.style.animation = 'terminal-glow 0.5s ease-out';
+    setTimeout(() => {
+      terminalOutput.style.animation = '';
+    }, 500);
+  }
+}
+
+/**
+ * Clear terminal output
+ */
+function clearTerminal() {
+  terminalOutput.textContent = '';
+  appendTerminalOutput('Terminal cleared.\n');
+}
+
+/**
+ * Display help information
+ */
+function showHelp() {
+  const help = `
+╔════════════════════════════════════════════════╗
+║           MOCHI-UI v2.0 - Help Menu            ║
+╠════════════════════════════════════════════════╣
+║ AVAILABLE COMMANDS:                            ║
+║                                                ║
+║  help              - Show this help menu       ║
+║  clear             - Clear terminal output     ║
+║  system            - Show system info          ║
+║  processes         - List running processes    ║
+║  time              - Show current time         ║
+║  uptime            - Show system uptime        ║
+║  ipconfig          - Show network info         ║
+║  dir/ls            - List current directory    ║
+║  echo <text>       - Echo text to terminal     ║
+║  date              - Show current date         ║
+║                                                ║
+║ Any other command will be executed via shell   ║
+╚════════════════════════════════════════════════╝
+`;
+  appendTerminalOutput(help);
+}
+
+/**
+ * Show system information summary
+ */
+function showSystemInfo() {
+  if (!systemDetailsCache) return;
+  
+  const info = systemDetailsCache;
+  const sysInfo = `
+╔════════════════════════════════════════════════╗
+║         SYSTEM INFORMATION SUMMARY             ║
+╠════════════════════════════════════════════════╣
+OS:           ${info.os || 'N/A'}
+Hostname:     ${info.hostname || 'N/A'}
+IP Address:   ${info.ip || 'N/A'}
+
+CPU:          ${info.cpu.name || 'N/A'}
+Cores:        ${info.cpu.cores || 'N/A'}
+Clock Speed:  ${info.cpu.speed || 'N/A'}
+Load:         ${info.cpu.load || 'N/A'}%
+
+Memory:       ${info.mem.used || 'N/A'} GB / ${info.mem.total || 'N/A'} GB
+GPU:          ${info.gpu.name || 'N/A'}
+╚════════════════════════════════════════════════╝
+`;
+  appendTerminalOutput(sysInfo);
+}
+
+/**
+ * Handle command input and execution
+ */
+commandInput.addEventListener('keydown', async (event) => {
+  if (event.key === 'Enter') {
+    const command = commandInput.value.trim();
+    commandInput.value = '';
+
+    if (command === '') return;
+
+    appendTerminalOutput(`\n> ${command}`);
+
+    // Handle built-in commands
+    switch (command.toLowerCase()) {
+      case 'help':
+        showHelp();
+        break;
+      case 'clear':
+        clearTerminal();
+        break;
+      case 'system':
+        showSystemInfo();
+        break;
+      case 'time':
+        appendTerminalOutput(`\n${new Date().toLocaleTimeString()}`);
+        break;
+      case 'date':
+        appendTerminalOutput(`\n${new Date().toLocaleDateString()}`);
+        break;
+      case 'uptime': {
+        const uptimeMs = Date.now() - systemStartTime;
+        const days = Math.floor(uptimeMs / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((uptimeMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        appendTerminalOutput(`\nSystem uptime: ${days}d ${hours}h`);
+        break;
+      }
+      case 'ipconfig':
+        if (systemDetailsCache) {
+          appendTerminalOutput(`\nIP Address: ${systemDetailsCache.ip || 'N/A'}`);
+          appendTerminalOutput(`\nHostname: ${systemDetailsCache.hostname || 'N/A'}`);
+        }
+        break;
+      case 'processes':
+        showSystemInfo();
+        break;
+      case 'dir':
+      case 'ls':
+        appendTerminalOutput(`\n[Current Path: ${currentPath}]`);
+        break;
+      default:
+        // Execute system command
+        const result = await window.api.executeCommand(command);
+        if (result.error) {
+          appendTerminalOutput(`\n[ERROR] ${result.error}`);
+        } else if (result.output) {
+          appendTerminalOutput(`\n${result.output}`);
+        } else {
+          appendTerminalOutput(`\n[OK] Command executed successfully`);
+        }
+    }
+  }
+});
+
+/* ============================================
+   BOOT SEQUENCE & INITIALIZATION
+   ============================================ */
+
+const bootSequenceText = [
+  "⚡ Initializing Mochi-UI v2.0 System Boot Sequence...",
+  "📡 Detecting system architecture...",
+  "🔍 Scanning hardware configuration...",
+  "🔐 Loading security protocols...",
+  "💾 Initializing kernel modules...",
+  "⚙️  Configuring core components...",
+  "🌐 Establishing network connection...",
+  "📊 Initializing performance monitoring...",
+  "🎨 Loading graphical interface...",
+  "📁 Mounting file system...",
+  "🎯 Running system diagnostics...",
+  "✅ All systems operational...",
+  "🚀 Ready for user interaction...",
+  " ",
+  "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+  "  ✓ MOCHI-UI System Ready",
+  "  Type 'help' for available commands",
+  "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 ];
 
-const welcomeText = "Mochi-UI Version 1.0.0\nBooting up...\nConnecting to server...\nConnection established.\nWelcome, user!";
+const welcomeTerminalText = "Welcome to Mochi-UI v2.0\n> Type 'help' for available commands\n";
 
-async function updateLiveStats() {
-    const info = await window.api.getSystemInfo();
-    if (info) {
-        osInfo.innerText = `OS: ${info.os}`;
-        ipInfo.innerText = `IP: ${info.ip}`;
-        hostnameInfo.innerText = `Hostname: ${info.hostname}`;
-        
-        cpuLoadValue.innerText = `${info.cpu.load}%`;
-        ramUsageValue.innerText = `${info.mem.used} GB / ${info.mem.total} GB`;
-        gpuLoadValue.innerText = `${info.gpu.load}%`;
-
-        processList.innerHTML = '';
-        info.processes.forEach(p => {
-            const li = document.createElement('li');
-            li.textContent = `${p.name} - CPU: ${p.cpu}% | RAM: ${p.mem}MB`;
-            processList.appendChild(li);
-        });
-        
-        systemDetailsCache = info;
-        if (!statDetails.classList.contains('hidden')) {
-            updateDetailInfo(info);
-        }
-    }
-}
-
-function typeText(element, text, index = 0) {
-    if (index < text.length) {
-        element.textContent += text.charAt(index);
-        setTimeout(() => typeText(element, text, index + 1), 50);
-    }
-}
-
+/**
+ * Type boot sequence text with animation
+ */
 function bootSequence(index = 0) {
-    if (index < bootText.length) {
-        loaderText.textContent += "\n" + bootText[index];
-        loaderText.scrollTop = loaderText.scrollHeight;
-        setTimeout(() => bootSequence(index + 1), 30); 
-    } else {
-        setTimeout(() => {
-            loaderText.scrollTop = loaderText.scrollHeight;
-            loaderScreen.classList.add('hidden');
-            mainUI.classList.remove('hidden');
-            mainUI.classList.add('fade-in');
-            initializeUI();
-        }, 100);
-    }
-}
-
-function startGlitchEffect() {
-    const globalGlitchChance = 0.05; 
-    const isGlobalGlitch = Math.random() < globalGlitchChance;
-    const glitchDelay = Math.random() * 15000 + 5000;
-    
+  if (index < bootSequenceText.length) {
+    loaderText.textContent += "\n" + bootSequenceText[index];
+    loaderText.scrollTop = loaderText.scrollHeight;
+    setTimeout(() => bootSequence(index + 1), 50);
+  } else {
     setTimeout(() => {
-        if (isGlobalGlitch) {
-            mainUI.classList.add('glitch-all');
-            setTimeout(() => {
-                mainUI.classList.remove('glitch-all');
-                startGlitchEffect();
-            }, 500);
-        } else {
-            const glitchTargets = document.querySelectorAll('.header, .terminal-screen, .input-line');
-            const targetElement = glitchTargets[Math.floor(Math.random() * glitchTargets.length)];
-            
-            const textContent = targetElement.textContent;
-            targetElement.classList.add('glitch');
-            targetElement.setAttribute('data-glitch-text', textContent);
-
-            setTimeout(() => {
-                targetElement.classList.remove('glitch');
-                startGlitchEffect();
-            }, 1000);
-        }
-    }, glitchDelay);
+      loaderScreen.classList.add('hidden');
+      mainUI.classList.remove('hidden');
+      mainUI.classList.add('fade-in');
+      initializeUI();
+    }, 500);
+  }
 }
 
-function initializeUI() {
-    updateLiveStats();
-    setInterval(updateLiveStats, 2000);
-    typeText(terminalOutput, welcomeText);
-    startGlitchEffect();
-    navigateTo(currentPath);
-    listDrives();
+/**
+ * Initialize main UI after boot
+ */
+async function initializeUI() {
+  // Clear terminal and show welcome
+  terminalOutput.textContent = welcomeTerminalText;
+  
+  // Initialize all systems
+  await updateLiveStats();
+  await navigateTo(currentPath);
+  await listDrives();
+  
+  // Start continuous stats update
+  setInterval(updateLiveStats, 2000);
+  
+  // Add some animations
+  animateUIElements();
+  
+  // Set focus on input
+  commandInput.focus();
 }
 
-commandInput.addEventListener('keydown', async (event) => {
-    if (event.key === 'Enter') {
-        const command = commandInput.value.trim();
-        if (command !== "") {
-            terminalOutput.textContent += `\n> ${command}`;
-            
-            const result = await window.api.executeCommand(command);
-            
-            if (result.error) {
-                terminalOutput.textContent += `\nFehler: ${result.error}`;
-            } else {
-                terminalOutput.textContent += `\n${result.output}`;
-            }
-            
-            terminalOutput.scrollTop = terminalOutput.scrollHeight;
-            commandInput.value = '';
-        }
-    }
-});
+/**
+ * Animate UI elements on startup
+ */
+function animateUIElements() {
+  const elements = document.querySelectorAll('.sidebar, .terminal-area');
+  elements.forEach((el, index) => {
+    el.style.animation = `sidebar-enter 0.5s ease-out ${index * 0.1}s backwards`;
+  });
+}
 
-// Neu: Führt die Boot-Sequenz beim Laden der Seite aus
+/* ============================================
+   APPLICATION STARTUP
+   ============================================ */
+
 document.addEventListener('DOMContentLoaded', () => {
-    // Stellen Sie sicher, dass der TV-Effekt zu Beginn sichtbar ist
-    tvEffect.classList.remove('hidden');
-    
-    // Die Boot-Sequenz startet jetzt nach dem TV-Effekt
-    tvEffect.addEventListener('animationend', () => {
-        tvEffect.classList.add('hidden');
-        loaderScreen.classList.add('fade-in');
-        bootSequence();
-    });
+  // Start boot sequence
+  tvEffect.classList.remove('hidden');
+  
+  tvEffect.addEventListener('animationend', () => {
+    tvEffect.classList.add('hidden');
+    loaderScreen.classList.add('fade-in');
+    bootSequence();
+  });
 });
+
+/* ============================================
+   ERROR HANDLING & DEBUGGING
+   ============================================ */
+
+window.addEventListener('error', (event) => {
+  console.error('Application Error:', event.error);
+  appendTerminalOutput(`\n[SYSTEM ERROR] ${event.error.message}`);
+});
+
+// Export for debugging
+window.mochiUI = {
+  appendTerminalOutput,
+  navigateTo,
+  updateLiveStats,
+  clearTerminal,
+  showSystemInfo,
+  statsHistory
+};
+
+console.log('✓ Mochi-UI v2.0 Script Loaded Successfully');
